@@ -8,25 +8,11 @@ const srcDir = path.join(rootDir, "src");
 const distDir = path.join(rootDir, "dist");
 
 const sharedPaths = ["assets"];
-const browsers = ["firefox", "chrome"];
-const generatedRulesPath = "rules.json";
+const browsers = ["firefox"];
 
 const HTML_REFERENCE = /(?:src|href)="([^"]+)"/g;
 const MODULE_REFERENCE = /(?:from|import)\s*["'](\.[^"']*)["']/g;
 
-const resourceTypes = [
-  "main_frame",
-  "sub_frame",
-  "stylesheet",
-  "script",
-  "image",
-  "font",
-  "object",
-  "xmlhttprequest",
-  "ping",
-  "media",
-  "other",
-];
 
 async function readJson(relativePath) {
   return JSON.parse(await readFile(path.join(rootDir, relativePath), "utf8"));
@@ -64,35 +50,10 @@ function collectManifestPaths(manifest) {
   add(manifest.background?.page);
   add(manifest.background?.service_worker);
 
-  for (const resource of manifest.declarative_net_request?.rule_resources ?? []) {
-    add(resource.path);
-  }
 
   return [...paths];
 }
 
-function buildRules(config) {
-  return [
-    {
-      id: 1,
-      priority: 1,
-      action: {
-        type: "modifyHeaders",
-        requestHeaders: [
-          {
-            header: "User-Agent",
-            operation: "set",
-            value: config.TV_USER_AGENT,
-          },
-        ],
-      },
-      condition: {
-        urlFilter: config.TV_PAGE_URL_FILTER,
-        resourceTypes,
-      },
-    },
-  ];
-}
 
 async function collectHtmlPaths(absolutePath, relativePath) {
   const html = await readFile(absolutePath, "utf8");
@@ -212,8 +173,7 @@ async function build(browser, project) {
 
   const runtimeFiles = collectManifestPaths(manifest).filter(
     (relativePath) =>
-      !sharedPaths.some((shared) => relativePath.startsWith(`${shared}/`)) &&
-      relativePath !== generatedRulesPath,
+      !sharedPaths.some((shared) => relativePath.startsWith(`${shared}/`)),
   );
 
   const filesToCopy = await resolveRuntimeFiles(runtimeFiles);
@@ -226,12 +186,6 @@ async function build(browser, project) {
     ),
   );
 
-  if (manifest.declarative_net_request) {
-    await writeFile(
-      path.join(outDir, generatedRulesPath),
-      `${JSON.stringify(buildRules(project.config), null, 2)}\n`,
-    );
-  }
 
   await writeFile(
     path.join(outDir, "manifest.json"),

@@ -10,6 +10,7 @@ globalThis.browser = {
   },
 };
 
+const { TV_USER_AGENT } = await import("../src/config.js");
 const { rewriteUserAgent } = await import("../src/background.js");
 
 test("rewriteUserAgent sets the user-agent header to the TV value", () => {
@@ -23,7 +24,7 @@ test("rewriteUserAgent sets the user-agent header to the TV value", () => {
   const result = rewriteUserAgent(details);
 
   assert.deepStrictEqual(result.requestHeaders, [
-    { name: "User-Agent", value: "Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/5.0 NativeTVAds Safari/538.1" },
+    { name: "User-Agent", value: TV_USER_AGENT },
     { name: "Accept", value: "text/html" },
   ]);
 });
@@ -35,5 +36,5 @@ test("rewriteUserAgent matches user-agent case-insensitively", () => {
 
   const result = rewriteUserAgent(details);
 
-  assert.strictEqual(result.requestHeaders[0].value, "Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/5.0 NativeTVAds Safari/538.1");
+  assert.strictEqual(result.requestHeaders[0].value, TV_USER_AGENT);
 });

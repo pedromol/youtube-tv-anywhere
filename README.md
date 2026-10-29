@@ -12,9 +12,6 @@ so the extension rewrites that header on requests to `youtube.com/tv`:
 
 - **Firefox (MV3):** `src/background.js` uses `webRequest` with blocking, which
   is still available on Firefox.
-- **Chrome (MV3):** Chrome removed blocking `webRequest`; the same switch is
-  done declaratively via `declarativeNetRequest`, with the `rules.json`
-  generated at build time.
 
 ## Structure
 
@@ -22,7 +19,6 @@ so the extension rewrites that header on requests to `youtube.com/tv`:
 manifests/
   base.json             # fields common to both browsers
   firefox.json          # Firefox differences (permissions, background, gecko)
-  chrome.json           # Chrome differences (declarativeNetRequest)
 scripts/
   build.mjs             # dependency-free build, generates dist/<browser>/
 src/
@@ -33,10 +29,9 @@ src/
 Sources live in `src/` and `manifests/`; `dist/` is always generated and not
 versioned. No signed build artifact (`META-INF/`) stays in the repo.
 
-The build combines `manifests/base.json` with each browser's manifest, uses the
-version from `package.json`, derives `host_permissions` from `src/config.js`,
-and generates Chrome's `rules.json` from the same file. That is, the
-`User-Agent` and the `youtube.com/tv` scope are defined once, in `src/config.js`.
+The build combines manifests/base.json with manifests/firefox.json, uses the
+version from package.json, and derives host_permissions from src/config.js.
+The User-Agent and the youtube.com/tv scope are defined once, in src/config.js.
 
 ## Development
 
@@ -45,7 +40,7 @@ Firefox 140+ / Firefox for Android 142+ (minimums set in the manifest because of
 `data_collection_permissions`).
 
 ```bash
-npm run build     # generates dist/firefox and dist/chrome
+npm run build     # generates dist/firefox
 npm run check     # syntax check of scripts
 npm run clean     # removes dist/
 ```
@@ -62,11 +57,6 @@ npm run clean     # removes dist/
 To distribute, package the contents of `dist/firefox/` as a `.xpi` (the `id` in
 `browser_specific_settings.gecko` is already set).
 
-**Chrome**
-
-1. `npm run build`
-2. Open `chrome://extensions`, enable developer mode
-3. "Load unpacked" and select `dist/chrome/`
 
 ## Usage
 
