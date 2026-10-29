@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>YouTube Remote Control</title>
+    <link rel="stylesheet" href="popup.css" />
+    <script src="popup.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <img
+        class="banner"
+        src="../assets/images/banner.jpg"
+        alt="YouTube Remote Control"
+      />
+    </header>
+
+    <main>
+      <p>
+        This lets you load
+        <a href="https://youtube.com/tv" target="_blank" rel="noreferrer"
+          >youtube.com/tv</a
+        >
+        so you can remote control YouTube from your phone or other mobile device.
+      </p>
+
+      <p>
+        <button type="button" id="instructions-toggle" aria-expanded="false">
+          Click here for setup instructions
+        </button>
+      </p>
+
+      <section id="setup" hidden>
+        <p>To use:</p>
+        <ol>
+          <li>
+            Open
+            <a href="https://youtube.com/tv" target="_blank" rel="noreferrer"
+              >youtube.com/tv</a
+            >
+            and click the Settings icon, then "link with TV code" and it'll show
+            you a code.
+          </li>
+          <li>
+            Open the YouTube app on your phone and go to Settings &gt; Watch on
+            TV &gt; Enter TV Code and enter that code and press the "link"
+            button.
+          </li>
+          <li>
+            Or in theory, if you're on the same wifi network, you can simply
+            open the YouTube app on your phone and have the cast icon appear
+            even without manually linking, but that doesn't seem to work as
+            reliably.
+          </li>
+        </ol>
+
+        <p class="cast-icon">
+          <img
+            src="../assets/images/casticon.jpg"
+            alt="Cast icon in the YouTube app"
+          />
+        </p>
+
+        <p>
+          After linking, whatever you play in the YouTube app on your phone will
+          play in the YouTube window on your laptop or desktop. Whoo hoo!
+        </p>
+
+        <p>To stop casting, click the Cast icon again and choose "disconnect".</p>
+
+        <p>
+          <strong>Troubleshooting:</strong> if it doesn't work or stops working:
+          in the
+          <a href="https://youtube.com/tv" target="_blank" rel="noreferrer"
+            >youtube.com/tv</a
+          >
+          browser window go to Settings &gt; Linked Devices and click "unlink
+          all devices". And on your mobile device kill and relaunch the YouTube
+          app and repeat the steps above.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

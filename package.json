@@ -1,0 +1,15 @@
+{
+  "name": "youtube-remote-control",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Browser extension that loads youtube.com/tv with a TV user agent so a phone can remote control YouTube.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "clean": "node scripts/build.mjs --clean",
+    "check": "node --check src/background.js && node --check src/popup/popup.js && node --check scripts/build.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

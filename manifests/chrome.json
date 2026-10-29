@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Remote Control",
+  "short_name": "youtube-remote-control",
+  "description": "Control YouTube playing in your browser from your phone or another mobile device.",
+  "version": "2.0.0",
+  "icons": {
+    "16": "assets/icons/16.png",
+    "48": "assets/icons/48.png",
+    "128": "assets/icons/128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "assets/icons/16.png",
+      "48": "assets/icons/48.png"
+    },
+    "default_title": "YouTube Remote Control",
+    "default_popup": "popup/popup.html"
+  },
+  "permissions": ["declarativeNetRequest"],
+  "host_permissions": ["*://*.youtube.com/tv*"],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "youtube-tv-user-agent",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  }
+}
