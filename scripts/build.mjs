@@ -7,7 +7,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const srcDir = path.join(rootDir, "src");
 const distDir = path.join(rootDir, "dist");
 
-const sharedPaths = ["popup", "assets"];
+const sharedPaths = ["assets"];
 const browsers = ["firefox", "chrome"];
 const generatedRulesPath = "rules.json";
 
@@ -59,10 +59,6 @@ function collectManifestPaths(manifest) {
 
     Object.values(values ?? {}).forEach(add);
   };
-
-  addValues(manifest.icons);
-  add(manifest.action?.default_popup);
-  addValues(manifest.action?.default_icon);
 
   (manifest.background?.scripts ?? []).forEach(add);
   add(manifest.background?.page);

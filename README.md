@@ -1,92 +1,80 @@
-# YouTube Remote Control
+# YouTube TV Anywhere
 
-Extensão de navegador que força o `youtube.com/tv` a se identificar como uma
-smart TV, permitindo controlar o YouTube do desktop pelo app do celular
-(cast / "assistir na TV").
+Browser extension that forces `youtube.com/tv` to identify itself as a smart TV,
+allowing controlling YouTube from the desktop via the mobile app (cast /
+"watch on TV").
 
-## Como funciona
+## How it works
 
-O YouTube só libera o pareamento com o celular quando a página é aberta como
-`youtube.com/tv`. O site detecta navegadores comuns pelo cabeçalho
-`User-Agent`, então a extensão reescreve esse cabeçalho nas requisições para
-`youtube.com/tv`:
+YouTube only allows pairing with the mobile app when the page is opened as
+`youtube.com/tv`. The site detects common browsers via the `User-Agent` header,
+so the extension rewrites that header on requests to `youtube.com/tv`:
 
-- **Firefox (MV3):** `src/background.js` usa `webRequest` com bloqueio, que
-  continua disponível no Firefox.
-- **Chrome (MV3):** o Chrome removeu o `webRequest` bloqueante; a mesma troca é
-  feita declarativamente via `declarativeNetRequest`, com o `rules.json`
-  gerado no build.
+- **Firefox (MV3):** `src/background.js` uses `webRequest` with blocking, which
+  is still available on Firefox.
+- **Chrome (MV3):** Chrome removed blocking `webRequest`; the same switch is
+  done declaratively via `declarativeNetRequest`, with the `rules.json`
+  generated at build time.
 
-## Estrutura
+## Structure
 
 ```
 manifests/
-  base.json             # campos comuns aos dois navegadores
-  firefox.json          # diferenças do Firefox (permissões, background, gecko)
-  chrome.json           # diferenças do Chrome (declarativeNetRequest)
+  base.json             # fields common to both browsers
+  firefox.json          # Firefox differences (permissions, background, gecko)
+  chrome.json           # Chrome differences (declarativeNetRequest)
 scripts/
-  build.mjs             # build sem dependências, gera dist/<navegador>/
+  build.mjs             # dependency-free build, generates dist/<browser>/
 src/
-  config.js             # User-Agent e escopo de URL (fonte única)
-  background.js         # reescrita de User-Agent (somente Firefox)
-  popup/
-    popup.html
-    popup.css
-    popup.js
-  assets/
-    icons/              # ícones da extensão
-    images/             # imagens usadas pelo popup
+  config.js             # User-Agent and URL scope (single source of truth)
+  background.js         # User-Agent rewrite (Firefox only)
 ```
 
-Fontes ficam em `src/` e `manifests/`; `dist/` é sempre gerado e não é
-versionado. Nenhum arquivo de build assinado (`META-INF/`) fica no repositório.
+Sources live in `src/` and `manifests/`; `dist/` is always generated and not
+versioned. No signed build artifact (`META-INF/`) stays in the repo.
 
-O build combina `manifests/base.json` com o manifest de cada navegador, usa a
-versão de `package.json`, deriva `host_permissions` de `src/config.js` e gera o
-`rules.json` do Chrome a partir do mesmo arquivo. Ou seja, o User-Agent e o
-escopo `youtube.com/tv` são definidos uma única vez, em `src/config.js`.
+The build combines `manifests/base.json` with each browser's manifest, uses the
+version from `package.json`, derives `host_permissions` from `src/config.js`,
+and generates Chrome's `rules.json` from the same file. That is, the
+`User-Agent` and the `youtube.com/tv` scope are defined once, in `src/config.js`.
 
-## Desenvolvimento
+## Development
 
-Requisitos: Node.js 18+ (apenas para o build; a extensão não usa bundler) e
-Firefox 140+ / Firefox para Android 142+ (mínimos definidos no manifest por
-causa de `data_collection_permissions`).
+Requirements: Node.js 18+ (build only; the extension uses no bundler) and
+Firefox 140+ / Firefox for Android 142+ (minimums set in the manifest because of
+`data_collection_permissions`).
 
 ```bash
-npm run build     # gera dist/firefox e dist/chrome
-npm run check     # checagem de sintaxe dos scripts
-npm run clean     # remove dist/
+npm run build     # generates dist/firefox and dist/chrome
+npm run check     # syntax check of scripts
+npm run clean     # removes dist/
 ```
 
-O build valida os manifests, segue imports dos scripts de background e falha se
-algum arquivo referenciado (ícones, popup, background, módulos, rules) não
-existir.
 
-## Carregar a extensão
+## Load the extension
 
 **Firefox**
 
 1. `npm run build`
-2. Abra `about:debugging#/runtime/this-firefox`
-3. "Carregar complemento temporário" e selecione `dist/firefox/manifest.json`
+2. Open `about:debugging#/runtime/this-firefox`
+3. "Load Temporary Add-on" and select `dist/firefox/manifest.json`
 
-Para distribuir, empacote o conteúdo de `dist/firefox/` como `.xpi` (o `id` em
-`browser_specific_settings.gecko` já está definido).
+To distribute, package the contents of `dist/firefox/` as a `.xpi` (the `id` in
+`browser_specific_settings.gecko` is already set).
 
 **Chrome**
 
 1. `npm run build`
-2. Abra `chrome://extensions`, ative o modo desenvolvedor
-3. "Carregar sem compactação" e selecione `dist/chrome/`
+2. Open `chrome://extensions`, enable developer mode
+3. "Load unpacked" and select `dist/chrome/`
 
-## Uso
+## Usage
 
-1. Abra `https://youtube.com/tv` e clique no ícone de configurações, depois em
-   "Vincular com código da TV".
-2. No app do YouTube do celular: Configurações > Assistir na TV > Inserir
-   código da TV.
-3. O que tocar no celular passa a tocar na janela do navegador.
+1. Open `https://youtube.com/tv` and click the settings icon, then "Link with
+   TV code".
+2. On the YouTube mobile app: Settings > Watch on TV > Enter TV code.
+3. What you tap on the phone starts playing in the browser window.
 
-Se parar de funcionar: em `youtube.com/tv` vá em Configurações > Dispositivos
-vinculados e clique em "desvincular todos os dispositivos"; no celular, feche e
-reabra o app do YouTube e repita o processo.
+If it stops working: in `youtube.com/tv` go to Settings > Linked devices and
+click "unlink all devices"; on mobile, close and reopen the YouTube app and
+repeat the process.

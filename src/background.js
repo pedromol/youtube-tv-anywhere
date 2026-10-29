@@ -1,6 +1,6 @@
 import { TV_PAGE_PATTERN, TV_USER_AGENT } from "./config.js";
 
-function rewriteUserAgent(details) {
+export function rewriteUserAgent(details) {
   for (const header of details.requestHeaders) {
     if (header.name.toLowerCase() === "user-agent") {
       header.value = TV_USER_AGENT;
