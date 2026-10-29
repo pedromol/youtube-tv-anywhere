@@ -14,19 +14,21 @@ O YouTube só libera o pareamento com o celular quando a página é aberta como
 - **Firefox (MV3):** `src/background.js` usa `webRequest` com bloqueio, que
   continua disponível no Firefox.
 - **Chrome (MV3):** o Chrome removeu o `webRequest` bloqueante; a mesma troca é
-  feita declarativamente em `src/rules.json` via `declarativeNetRequest`.
+  feita declarativamente via `declarativeNetRequest`, com o `rules.json`
+  gerado no build.
 
 ## Estrutura
 
 ```
 manifests/
-  firefox.json          # manifest MV3 do Firefox
-  chrome.json           # manifest MV3 do Chrome
+  base.json             # campos comuns aos dois navegadores
+  firefox.json          # diferenças do Firefox (permissões, background, gecko)
+  chrome.json           # diferenças do Chrome (declarativeNetRequest)
 scripts/
   build.mjs             # build sem dependências, gera dist/<navegador>/
 src/
+  config.js             # User-Agent e escopo de URL (fonte única)
   background.js         # reescrita de User-Agent (somente Firefox)
-  rules.json            # regras declarativas de User-Agent (somente Chrome)
   popup/
     popup.html
     popup.css
@@ -38,6 +40,11 @@ src/
 
 Fontes ficam em `src/` e `manifests/`; `dist/` é sempre gerado e não é
 versionado. Nenhum arquivo de build assinado (`META-INF/`) fica no repositório.
+
+O build combina `manifests/base.json` com o manifest de cada navegador, usa a
+versão de `package.json`, deriva `host_permissions` de `src/config.js` e gera o
+`rules.json` do Chrome a partir do mesmo arquivo. Ou seja, o User-Agent e o
+escopo `youtube.com/tv` são definidos uma única vez, em `src/config.js`.
 
 ## Desenvolvimento
 
@@ -51,8 +58,9 @@ npm run check     # checagem de sintaxe dos scripts
 npm run clean     # remove dist/
 ```
 
-O build valida os manifests e falha se algum arquivo referenciado (ícones,
-popup, background, rules) não existir.
+O build valida os manifests, segue imports dos scripts de background e falha se
+algum arquivo referenciado (ícones, popup, background, módulos, rules) não
+existir.
 
 ## Carregar a extensão
 

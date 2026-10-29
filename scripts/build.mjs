@@ -1,57 +1,101 @@
 #!/usr/bin/env node
 import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const srcDir = path.join(rootDir, "src");
 const distDir = path.join(rootDir, "dist");
 
 const sharedPaths = ["popup", "assets"];
-
-const targets = [
-  {
-    browser: "firefox",
-    manifestPath: "manifests/firefox.json",
-    runtimeFiles: ["background.js"],
-  },
-  {
-    browser: "chrome",
-    manifestPath: "manifests/chrome.json",
-    runtimeFiles: ["rules.json"],
-  },
-];
+const browsers = ["firefox", "chrome"];
+const generatedRulesPath = "rules.json";
 
 const HTML_REFERENCE = /(?:src|href)="([^"]+)"/g;
+const MODULE_REFERENCE = /(?:from|import)\s*["'](\.[^"']*)["']/g;
 
-function addPath(set, value) {
-  if (typeof value === "string" && value !== "") {
-    set.add(value);
-  }
+const resourceTypes = [
+  "main_frame",
+  "sub_frame",
+  "stylesheet",
+  "script",
+  "image",
+  "font",
+  "object",
+  "xmlhttprequest",
+  "ping",
+  "media",
+  "other",
+];
+
+async function readJson(relativePath) {
+  return JSON.parse(await readFile(path.join(rootDir, relativePath), "utf8"));
+}
+
+async function loadProject() {
+  const [base, packageJson, config] = await Promise.all([
+    readJson("manifests/base.json"),
+    readJson("package.json"),
+    import(pathToFileURL(path.join(srcDir, "config.js")).href),
+  ]);
+
+  return { base, version: packageJson.version, config };
 }
 
 function collectManifestPaths(manifest) {
   const paths = new Set();
 
-  Object.values(manifest.icons ?? {}).forEach((value) => addPath(paths, value));
-  addPath(paths, manifest.action?.default_popup);
+  const add = (value) => {
+    if (typeof value === "string" && value !== "") {
+      paths.add(value);
+    }
+  };
 
-  const actionIcons = manifest.action?.default_icon;
-  if (typeof actionIcons === "string") {
-    addPath(paths, actionIcons);
-  } else {
-    Object.values(actionIcons ?? {}).forEach((value) => addPath(paths, value));
-  }
+  const addValues = (values) => {
+    if (typeof values === "string") {
+      add(values);
+      return;
+    }
 
-  (manifest.background?.scripts ?? []).forEach((value) => addPath(paths, value));
-  addPath(paths, manifest.background?.page);
-  addPath(paths, manifest.background?.service_worker);
+    Object.values(values ?? {}).forEach(add);
+  };
+
+  addValues(manifest.icons);
+  add(manifest.action?.default_popup);
+  addValues(manifest.action?.default_icon);
+
+  (manifest.background?.scripts ?? []).forEach(add);
+  add(manifest.background?.page);
+  add(manifest.background?.service_worker);
 
   for (const resource of manifest.declarative_net_request?.rule_resources ?? []) {
-    addPath(paths, resource.path);
+    add(resource.path);
   }
 
   return [...paths];
+}
+
+function buildRules(config) {
+  return [
+    {
+      id: 1,
+      priority: 1,
+      action: {
+        type: "modifyHeaders",
+        requestHeaders: [
+          {
+            header: "User-Agent",
+            operation: "set",
+            value: config.TV_USER_AGENT,
+          },
+        ],
+      },
+      condition: {
+        urlFilter: config.TV_PAGE_URL_FILTER,
+        resourceTypes,
+      },
+    },
+  ];
 }
 
 async function collectHtmlPaths(absolutePath, relativePath) {
@@ -63,14 +107,56 @@ async function collectHtmlPaths(absolutePath, relativePath) {
       continue;
     }
 
-    paths.push(
-      path.posix.normalize(
-        path.posix.join(path.posix.dirname(relativePath), reference),
-      ),
-    );
+    paths.push(path.posix.join(path.posix.dirname(relativePath), reference));
   }
 
   return paths;
+}
+
+async function collectModulePaths(absolutePath, relativePath) {
+  let source;
+
+  try {
+    source = await readFile(absolutePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(`missing module: ${path.relative(rootDir, absolutePath)}`);
+    }
+    throw error;
+  }
+
+  return [...source.matchAll(MODULE_REFERENCE)]
+    .map(([, specifier]) =>
+      path.posix.join(path.posix.dirname(relativePath), specifier),
+    )
+    .filter((specifier) => specifier.endsWith(".js"));
+}
+
+async function resolveRuntimeFiles(entryFiles) {
+  const files = new Set();
+  const queue = [...entryFiles];
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const relativePath = queue[index];
+
+    if (files.has(relativePath)) {
+      continue;
+    }
+    files.add(relativePath);
+
+    if (!relativePath.endsWith(".js")) {
+      continue;
+    }
+
+    queue.push(
+      ...(await collectModulePaths(
+        path.join(srcDir, relativePath),
+        relativePath,
+      )),
+    );
+  }
+
+  return [...files];
 }
 
 async function assertReferences(outDir, manifest) {
@@ -78,8 +164,8 @@ async function assertReferences(outDir, manifest) {
   const visited = new Set();
   const queue = collectManifestPaths(manifest);
 
-  while (queue.length > 0) {
-    const relativePath = queue.shift();
+  for (let index = 0; index < queue.length; index += 1) {
+    const relativePath = queue[index];
 
     if (visited.has(relativePath)) {
       continue;
@@ -88,15 +174,22 @@ async function assertReferences(outDir, manifest) {
 
     const absolutePath = path.join(outDir, relativePath);
 
+    if (relativePath.endsWith(".html")) {
+      try {
+        queue.push(...(await collectHtmlPaths(absolutePath, relativePath)));
+      } catch (error) {
+        if (error.code !== "ENOENT") {
+          throw error;
+        }
+        missing.push(relativePath);
+      }
+      continue;
+    }
+
     try {
       await access(absolutePath);
     } catch {
       missing.push(relativePath);
-      continue;
-    }
-
-    if (relativePath.endsWith(".html")) {
-      queue.push(...(await collectHtmlPaths(absolutePath, relativePath)));
     }
   }
 
@@ -105,23 +198,43 @@ async function assertReferences(outDir, manifest) {
   }
 }
 
-async function build(target) {
-  const manifest = JSON.parse(
-    await readFile(path.join(rootDir, target.manifestPath), "utf8"),
-  );
+async function build(browser, project) {
+  const manifest = {
+    ...project.base,
+    ...(await readJson(`manifests/${browser}.json`)),
+    version: project.version,
+    host_permissions: [project.config.TV_PAGE_PATTERN],
+  };
 
   if (manifest.manifest_version !== 3) {
-    throw new Error(`${target.manifestPath} is not Manifest V3`);
+    throw new Error(`manifests/${browser}.json is not Manifest V3`);
   }
 
-  const outDir = path.join(distDir, target.browser);
+  const outDir = path.join(distDir, browser);
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
-  for (const relativePath of [...sharedPaths, ...target.runtimeFiles]) {
-    await cp(path.join(srcDir, relativePath), path.join(outDir, relativePath), {
-      recursive: true,
-    });
+  const runtimeFiles = collectManifestPaths(manifest).filter(
+    (relativePath) =>
+      !sharedPaths.some((shared) => relativePath.startsWith(`${shared}/`)) &&
+      relativePath !== generatedRulesPath,
+  );
+
+  const filesToCopy = await resolveRuntimeFiles(runtimeFiles);
+
+  await Promise.all(
+    [...sharedPaths, ...filesToCopy].map((relativePath) =>
+      cp(path.join(srcDir, relativePath), path.join(outDir, relativePath), {
+        recursive: true,
+      }),
+    ),
+  );
+
+  if (manifest.declarative_net_request) {
+    await writeFile(
+      path.join(outDir, generatedRulesPath),
+      `${JSON.stringify(buildRules(project.config), null, 2)}\n`,
+    );
   }
 
   await writeFile(
@@ -141,9 +254,13 @@ async function main() {
     return;
   }
 
-  for (const target of targets) {
-    const outDir = await build(target);
-    console.log(`${target.browser}: ${path.relative(rootDir, outDir)}`);
+  const project = await loadProject();
+  const outDirs = await Promise.all(
+    browsers.map((browser) => build(browser, project)),
+  );
+
+  for (const outDir of outDirs) {
+    console.log(`${path.basename(outDir)}: ${path.relative(rootDir, outDir)}`);
   }
 }
 
