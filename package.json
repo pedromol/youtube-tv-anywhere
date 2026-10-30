@@ -1,14 +1,17 @@
 {
   "name": "youtube-tv-anywhere",
-  "version": "0.1.0",
+  "version": "0.1.7",
   "private": true,
   "description": "Browser extension that loads youtube.com/tv with a TV user agent so a phone can remote control YouTube.",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "clean": "node scripts/build.mjs --clean",
-    "check": "node --check src/config.js && node --check src/background.js && node --check scripts/build.mjs",
-    "test": "node --test"
+    "clean": "node scripts/bump-version.js --clean 2>/dev/null || rm -rf dist/",
+    "check": "node --check src/config.js && node --check src/background.js",
+    "test": "node --test",
+    "lint:manifest": "web-ext lint --ignore-files 'tests' 'tests/**' 'eslint.config.js' 'package.json' 'package-lock.json' 'README.md' 'docs' 'docs/**' 'AGENTS.md' 'build.sh' 'scripts' 'scripts/**'",
+    "build": "web-ext build --overwrite-dest --ignore-files 'tests' 'tests/**' 'eslint.config.js' 'package.json' 'package-lock.json' 'README.md' 'docs' 'docs/**' 'AGENTS.md' 'build.sh' 'scripts' 'scripts/**'",
+    "sign": "node scripts/bump-version.js && web-ext sign --artifacts-dir=./web-ext-artifacts --channel=unlisted --api-key=\"$AMO_JWT_ISSUER\" --api-secret=\"$AMO_JWT_SECRET\" --ignore-files 'tests' 'tests/**' 'eslint.config.js' 'package.json' 'package-lock.json' 'README.md' 'docs' 'docs/**' 'AGENTS.md' 'build.sh' 'scripts' 'scripts/**'",
+    "build:sign": "npm run sign"
   },
   "engines": {
     "node": ">=18"
