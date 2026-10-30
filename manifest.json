@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "version": "0.1.7",
+  "name": "YouTube TV Anywhere",
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+  "short_name": "youtube-tv-anywhere",
+  "description": "Control YouTube playing in your browser from your phone or another mobile device.",
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/tv*"],
+      "js": ["src/content_scripts/visibility.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "host_permissions": ["*://*.youtube.com/tv*"],
+  "permissions": ["webRequest", "webRequestBlocking"],
+  "background": {
+    "scripts": ["src/background.js"],
+    "type": "module"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{CA8562C1-90C6-4BEC-B5A5-092231B82280}",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  }
+}
